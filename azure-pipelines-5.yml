@@ -8,7 +8,7 @@ variables:
   MAVEN_DIR: $(Agent.TempDirectory)/maven
   MAVEN_CACHE: $(Pipeline.Workspace)/.m2
   SOURCE_DIR: $(Build.SourcesDirectory)/Helm/Pet_clinic_project/spring-petclinic
-  IMAGE_NAME: yourdockerhubusername/petclinic
+  IMAGE_NAME: yourdockerhubusername/petclinic  # Replace with your Docker Hub username
   IMAGE_TAG: $(Build.BuildId)
 
 steps:
@@ -21,18 +21,18 @@ steps:
     path: $(MAVEN_CACHE)
   displayName: 'Cache Maven local repo'
 
-# Download Maven to temp directory
+# Download Maven
 - script: |
     curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
   displayName: 'Download Maven'
 
-# Extract Maven to temp directory
+# Extract Maven
 - script: |
     mkdir -p $(MAVEN_DIR)
     tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
   displayName: 'Extract Maven'
 
-# Run Maven build using correct path
+# Maven build
 - script: |
     export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
     export PATH=$MAVEN_HOME/bin:$PATH
@@ -40,28 +40,32 @@ steps:
     mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
   displayName: 'Run Maven Build'
 
+# Publish JAR
 - publish: $(SOURCE_DIR)/target
   artifact: petclinic-jar-$(Build.BuildId)
-  displayName: 'Publish JAR Artifact with Unique Name'
-
-- publish: $(SOURCE_DIR)/target
-  artifact: petclinic-jar
   displayName: 'Publish JAR Artifact'
 
-# Docker version
-- script: docker --version
-  displayName: 'Check Docker Installation'
+# Verify Dockerfile exists
+- script: |
+    echo "Checking Dockerfile at: $(SOURCE_DIR)/Dockerfile"
+    if [ ! -f "$(SOURCE_DIR)/Dockerfile" ]; then
+      echo "##vso[task.logissue type=error]Dockerfile not found at $(SOURCE_DIR)/Dockerfile"
+      exit 1
+    fi
+    ls -la $(SOURCE_DIR)/Dockerfile
+  displayName: 'Verify Dockerfile Exists'
 
-# Docker login using service connection (RECOMMENDED)
+# Docker login (using service connection - recommended)
 - task: Docker@2
   displayName: 'Login to Docker Hub'
   inputs:
     command: login
-    containerRegistry: dockerHubService  # Replace with your service connection name
+    containerRegistry: dockerHubService  # Must match your service connection name
 
-# Build Docker image
+# Build Docker image with explicit path
 - script: |
-    docker build -t $(IMAGE_NAME):$(IMAGE_TAG) $(SOURCE_DIR)
+    cd $(SOURCE_DIR)
+    docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
   displayName: 'Build Docker Image'
 
 # Push Docker image
