@@ -52,7 +52,7 @@ steps:
 
 # Docker login
 - script: |
-    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+    echo "Kumar123@" | docker login -u "sashangy456" --password-stdin
   displayName: 'Docker Login'
 
 # Build Docker image
