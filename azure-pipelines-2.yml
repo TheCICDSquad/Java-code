@@ -6,6 +6,7 @@ pool:
 
 variables:
   MAVEN_CACHE: $(Pipeline.Workspace)/.m2
+  SOURCE_DIR: $(Build.SourcesDirectory)/Helm/Pet_clinic_project/spring-petclinic
   IMAGE_NAME: yourdockerhubusername/petclinic
   IMAGE_TAG: $(Build.BuildId)
 
@@ -15,7 +16,7 @@ steps:
 # Cache Maven local repo to speed up builds
 - task: Cache@2
   inputs:
-    key: 'maven | "$(Agent.OS)" | Helm/Pet_clinic_project/spring-petclinic/pom.xml'
+    key: 'maven | "$(Agent.OS)" | $(SOURCE_DIR)/pom.xml'
     path: $(MAVEN_CACHE)
   displayName: 'Cache Maven local repo'
 
@@ -29,14 +30,14 @@ steps:
     Expand-Archive -Path $(Build.ArtifactStagingDirectory)\maven.zip -DestinationPath $(Build.ArtifactStagingDirectory)\maven
   displayName: 'Extract Maven'
 
-# Run Maven build with local repo caching
+# Run Maven build from the correct pom.xml directory
 - powershell: |
-    cd $(Build.SourcesDirectory)\Helm\Pet_clinic_project\spring-petclinic
+    cd "$(SOURCE_DIR)"
     & "$(Build.ArtifactStagingDirectory)\maven\apache-maven-3.9.4\bin\mvn.cmd" -Dmaven.repo.local=$(MAVEN_CACHE) clean install
   displayName: 'Run Maven Build'
 
 # Publish the built JAR as a pipeline artifact
-- publish: $(Build.SourcesDirectory)\Helm\Pet_clinic_project\spring-petclinic\target
+- publish: $(SOURCE_DIR)\target
   artifact: petclinic-jar
   displayName: 'Publish JAR Artifact'
 
@@ -45,13 +46,9 @@ steps:
     $ErrorActionPreference = 'Stop'
     $installerPath = "$env:TEMP\DockerDesktopInstaller.exe"
     
-    # Download Docker Desktop installer
     Invoke-WebRequest -Uri https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe -OutFile $installerPath
-    
-    # Install Docker silently
     Start-Process -FilePath $installerPath -ArgumentList "install", "--quiet" -Wait
     
-    # Wait for Docker service to be running (max 2 minutes)
     $timeout = 120
     $elapsed = 0
     while (-not (Get-Service -Name com.docker.service -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' }) -and $elapsed -lt $timeout) {
@@ -63,16 +60,15 @@ steps:
     if ($elapsed -ge $timeout) {
       throw "Docker service failed to start within timeout"
     }
-    
     Write-Host "Docker Desktop installed and running."
   displayName: 'Install Docker Desktop on agent'
 
-# Build Docker image (adjust Dockerfile path if needed)
+# Build Docker image from the correct context
 - script: |
-    docker build -t $(IMAGE_NAME):$(IMAGE_TAG) $(Build.SourcesDirectory)
+    docker build -t $(IMAGE_NAME):$(IMAGE_TAG) $(SOURCE_DIR)
   displayName: 'Build Docker Image'
 
-# Docker login (make sure DOCKER_USERNAME and DOCKER_PASSWORD are pipeline secrets)
+# Docker login (set DOCKER_USERNAME and DOCKER_PASSWORD as secrets)
 - script: |
     echo $(DOCKER_PASSWORD) | docker login -u $(DOCKER_USERNAME) --password-stdin
   displayName: 'Docker Login'
