@@ -1,0 +1,66 @@
+trigger:
+- main
+
+pool:
+  name: Linux_Agent
+
+variables:
+  MAVEN_DIR: $(Agent.TempDirectory)/maven
+  MAVEN_CACHE: $(Pipeline.Workspace)/.m2
+  SOURCE_DIR: $(Build.SourcesDirectory)/Helm/Pet_clinic_project/spring-petclinic
+  IMAGE_NAME: yourdockerhubusername/petclinic
+  IMAGE_TAG: $(Build.BuildId)
+  DOCKER_USERNAME: $(DOCKER_USERNAME)   # Secret variable
+  DOCKER_PASSWORD: $(DOCKER_PASSWORD)   # Secret variable
+
+steps:
+- checkout: self
+
+# Cache Maven local repo
+- task: Cache@2
+  inputs:
+    key: 'maven | "$(Agent.OS)" | $(SOURCE_DIR)/pom.xml'
+    path: $(MAVEN_CACHE)
+  displayName: 'Cache Maven local repo'
+
+# Download Maven to temp directory
+- script: |
+    curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
+  displayName: 'Download Maven'
+
+# Extract Maven to temp directory
+- script: |
+    mkdir -p $(MAVEN_DIR)
+    tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
+  displayName: 'Extract Maven'
+
+# Run Maven build using correct path
+- script: |
+    export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
+    export PATH=$MAVEN_HOME/bin:$PATH
+    cd $(SOURCE_DIR)
+    mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
+  displayName: 'Run Maven Build'
+
+- publish: $(SOURCE_DIR)/target
+  artifact: petclinic-jar-$(Build.BuildId)
+  displayName: 'Publish JAR Artifact with Unique Name'
+
+- publish: $(SOURCE_DIR)/target
+  artifact: petclinic-jar
+  displayName: 'Publish JAR Artifact'
+
+# Docker login
+- script: |
+    echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  displayName: 'Docker Login'
+
+# Build Docker image
+- script: |
+    docker build -t $(IMAGE_NAME):$(IMAGE_TAG) $(SOURCE_DIR)
+  displayName: 'Build Docker Image'
+
+# Push Docker image
+- script: |
+    docker push $(IMAGE_NAME):$(IMAGE_TAG)
+  displayName: 'Push Docker Image'
