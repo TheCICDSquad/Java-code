@@ -50,27 +50,27 @@ steps:
   artifact: petclinic-jar
   displayName: 'Publish JAR Artifact'
 
-# Install Docker Desktop silently on Windows self-hosted agent
-- powershell: |
-    $ErrorActionPreference = 'Stop'
-    $installerPath = "$env:TEMP\DockerDesktopInstaller.exe"
+# # Install Docker Desktop silently on Windows self-hosted agent
+# - powershell: |
+#     $ErrorActionPreference = 'Stop'
+#     $installerPath = "$env:TEMP\DockerDesktopInstaller.exe"
     
-    Invoke-WebRequest -Uri https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe -OutFile $installerPath
-    Start-Process -FilePath $installerPath -ArgumentList "install", "--quiet" -Wait
+#     Invoke-WebRequest -Uri https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe -OutFile $installerPath
+#     Start-Process -FilePath $installerPath -ArgumentList "install", "--quiet" -Wait
     
-    $timeout = 120
-    $elapsed = 0
-    while (-not (Get-Service -Name com.docker.service -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' }) -and $elapsed -lt $timeout) {
-      Start-Sleep -Seconds 5
-      $elapsed += 5
-      Write-Host "Waiting for Docker service to start..."
-    }
+#     $timeout = 120
+#     $elapsed = 0
+#     while (-not (Get-Service -Name com.docker.service -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' }) -and $elapsed -lt $timeout) {
+#       Start-Sleep -Seconds 5
+#       $elapsed += 5
+#       Write-Host "Waiting for Docker service to start..."
+#     }
     
-    if ($elapsed -ge $timeout) {
-      throw "Docker service failed to start within timeout"
-    }
-    Write-Host "Docker Desktop installed and running."
-  displayName: 'Install Docker Desktop on agent'
+#     if ($elapsed -ge $timeout) {
+#       throw "Docker service failed to start within timeout"
+#     }
+#     Write-Host "Docker Desktop installed and running."
+#   displayName: 'Install Docker Desktop on agent'
 
   # Docker login (set DOCKER_USERNAME and DOCKER_PASSWORD as secrets)
 - script: |
