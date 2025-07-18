@@ -7,7 +7,7 @@ pool:
 steps:
 # Download Maven binary
 - powershell: |
-    Invoke-WebRequest -Uri https://downloads.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip -OutFile $(Build.ArtifactStagingDirectory)\maven.zip
+    Invoke-WebRequest -Uri https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip -OutFile $(Build.ArtifactStagingDirectory)\maven.zip
   displayName: 'Download Maven'
 
 # Extract Maven
