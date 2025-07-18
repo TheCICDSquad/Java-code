@@ -5,7 +5,10 @@ pool:
   name: Self_Agent
 
 steps:
-# Download Maven binary
+# Checkout the code (usually automatic, but explicit is safer)
+- checkout: self
+
+# Download Maven
 - powershell: |
     Invoke-WebRequest -Uri https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip -OutFile $(Build.ArtifactStagingDirectory)\maven.zip
   displayName: 'Download Maven'
@@ -15,7 +18,8 @@ steps:
     Expand-Archive -Path $(Build.ArtifactStagingDirectory)\maven.zip -DestinationPath $(Build.ArtifactStagingDirectory)\maven
   displayName: 'Extract Maven'
 
-# Run Maven using full path
+# Run Maven build in the directory with pom.xml
 - powershell: |
+    cd $(Build.SourcesDirectory)\Helm\Pet_clinic_project\spring-petclinic
     & "$(Build.ArtifactStagingDirectory)\maven\apache-maven-3.9.4\bin\mvn.cmd" clean install
   displayName: 'Run Maven Build'
