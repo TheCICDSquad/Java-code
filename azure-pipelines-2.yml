@@ -5,6 +5,7 @@ pool:
   name: Self_Agent
 
 variables:
+  MAVEN_DIR: $(Agent.TempDirectory)\maven
   MAVEN_CACHE: $(Pipeline.Workspace)/.m2
   SOURCE_DIR: $(Build.SourcesDirectory)/Helm/Pet_clinic_project/spring-petclinic
   IMAGE_NAME: yourdockerhubusername/petclinic
@@ -13,34 +14,31 @@ variables:
 steps:
 - checkout: self
 
-# Cache Maven local repo to speed up builds
+# Cache Maven local repo
 - task: Cache@2
   inputs:
     key: 'maven | "$(Agent.OS)" | $(SOURCE_DIR)/pom.xml'
     path: $(MAVEN_CACHE)
   displayName: 'Cache Maven local repo'
 
-# Download Maven
+# Download Maven to temp directory
 - powershell: |
-    Invoke-WebRequest -Uri https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip -OutFile $(Build.ArtifactStagingDirectory)\maven.zip
+    $zipPath = "$(Agent.TempDirectory)\maven.zip"
+    Invoke-WebRequest -Uri https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip -OutFile $zipPath
   displayName: 'Download Maven'
-  
-- powershell: |
-    cd "$(SOURCE_DIR)"
-    & "$(Build.ArtifactStagingDirectory)\maven\apache-maven-3.9.4\bin\mvn.cmd" "clean" "install" "-Dmaven.repo.local=$(MAVEN_CACHE)"
-  displayName: 'Run Maven Build'
 
-
-# Extract Maven
+# Extract Maven to temp directory
 - powershell: |
-    Expand-Archive -Path $(Build.ArtifactStagingDirectory)\maven.zip -DestinationPath $(Build.ArtifactStagingDirectory)\maven
+    Expand-Archive -Path "$(Agent.TempDirectory)\maven.zip" -DestinationPath "$(MAVEN_DIR)"
   displayName: 'Extract Maven'
 
-# Run Maven build from the correct pom.xml directory
+# Run Maven build using correct path
 - powershell: |
+    $mvnPath = "$(MAVEN_DIR)\apache-maven-3.9.4\bin\mvn.cmd"
     cd "$(SOURCE_DIR)"
-    & "$(Build.ArtifactStagingDirectory)\maven\apache-maven-3.9.4\bin\mvn.cmd" -Dmaven.repo.local=$(MAVEN_CACHE) clean install
+    & $mvnPath "clean" "install" "-B" "-Dmaven.repo.local=$(MAVEN_CACHE)"
   displayName: 'Run Maven Build'
+
 
 # Publish the built JAR as a pipeline artifact
 - publish: $(SOURCE_DIR)\target
