@@ -5,5 +5,17 @@ pool:
   name: Self_Agent
 
 steps:
-- script: mvn clean install
-  displayName: 'Run Maven build'
+# Download Maven binary
+- powershell: |
+    Invoke-WebRequest -Uri https://downloads.apache.org/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.zip -OutFile $(Build.ArtifactStagingDirectory)\maven.zip
+  displayName: 'Download Maven'
+
+# Extract Maven
+- powershell: |
+    Expand-Archive -Path $(Build.ArtifactStagingDirectory)\maven.zip -DestinationPath $(Build.ArtifactStagingDirectory)\maven
+  displayName: 'Extract Maven'
+
+# Run Maven using full path
+- powershell: |
+    & "$(Build.ArtifactStagingDirectory)\maven\apache-maven-3.9.4\bin\mvn.cmd" clean install
+  displayName: 'Run Maven Build'
