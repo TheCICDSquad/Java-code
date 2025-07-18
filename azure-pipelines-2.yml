@@ -72,6 +72,12 @@ steps:
     Write-Host "Docker Desktop installed and running."
   displayName: 'Install Docker Desktop on agent'
 
+  # Docker login (set DOCKER_USERNAME and DOCKER_PASSWORD as secrets)
+- script: |
+    echo $(DOCKER_PASSWORD) | docker login -u $(DOCKER_USERNAME) --password-stdin
+  displayName: 'Docker Login'
+
+
 # Build Docker image from the correct context
 - script: |
     docker build -t $(IMAGE_NAME):$(IMAGE_TAG) $(SOURCE_DIR)
