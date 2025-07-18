@@ -1,0 +1,12 @@
+trigger:
+- main
+
+pool:
+  name: Self_Agent
+
+steps:
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean install'
+    options: '-B'  # Batch mode for Maven (no interactive input)
