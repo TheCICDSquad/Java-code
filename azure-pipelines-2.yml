@@ -39,6 +39,11 @@ steps:
     & $mvnPath "clean" "install" "-B" "-Dmaven.repo.local=$(MAVEN_CACHE)"
   displayName: 'Run Maven Build'
 
+- publish: $(SOURCE_DIR)\target
+  artifact: petclinic-jar-$(Build.BuildId)
+  displayName: 'Publish JAR Artifact with Unique Name'
+
+
 
 # Publish the built JAR as a pipeline artifact
 - publish: $(SOURCE_DIR)\target
