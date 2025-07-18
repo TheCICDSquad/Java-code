@@ -8,8 +8,9 @@ variables:
   MAVEN_DIR: $(Agent.TempDirectory)/maven
   MAVEN_CACHE: $(Pipeline.Workspace)/.m2
   SOURCE_DIR: $(Build.SourcesDirectory)/Helm/Pet_clinic_project/spring-petclinic
-  IMAGE_NAME: yourdockerhubusername/petclinic  # Replace with your Docker Hub username
+  IMAGE_NAME: sashangykumar456/petclinic  # Must match your Docker Hub repository exactly
   IMAGE_TAG: $(Build.BuildId)
+  DOCKER_REGISTRY: docker.io  # Explicit registry URL
 
 steps:
 - checkout: self
@@ -40,35 +41,32 @@ steps:
     mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
   displayName: 'Run Maven Build'
 
-# Publish JAR
-- publish: $(SOURCE_DIR)/target
-  artifact: petclinic-jar-$(Build.BuildId)
-  displayName: 'Publish JAR Artifact'
-
 # Verify Dockerfile exists
 - script: |
-    echo "Checking Dockerfile at: $(SOURCE_DIR)/Dockerfile"
     if [ ! -f "$(SOURCE_DIR)/Dockerfile" ]; then
       echo "##vso[task.logissue type=error]Dockerfile not found at $(SOURCE_DIR)/Dockerfile"
       exit 1
     fi
-    ls -la $(SOURCE_DIR)/Dockerfile
   displayName: 'Verify Dockerfile Exists'
 
-# Docker login (using service connection - recommended)
-- task: Docker@2
-  displayName: 'Login to Docker Hub'
-  inputs:
-    command: login
-    containerRegistry: dockerHubService  # Must match your service connection name
+# Docker login (using script with variables)
+- script: |
+    docker logout $(DOCKER_REGISTRY)
+    echo "$(DOCKER_PASSWORD)" | docker login $(DOCKER_REGISTRY) -u "$(DOCKER_USERNAME)" --password-stdin
+    docker info | grep Username
+  displayName: 'Docker Login'
+  env:
+    DOCKER_USERNAME: $(DOCKER_USERNAME)
+    DOCKER_PASSWORD: $(DOCKER_PASSWORD)
 
-# Build Docker image with explicit path
+# Build Docker image
 - script: |
     cd $(SOURCE_DIR)
-    docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+    docker build -t $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) .
   displayName: 'Build Docker Image'
 
-# Push Docker image
+# Push Docker image with retry
 - script: |
-    docker push $(IMAGE_NAME):$(IMAGE_TAG)
+    docker push $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) || \
+    (sleep 5 && docker push $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG))
   displayName: 'Push Docker Image'
