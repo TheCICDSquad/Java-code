@@ -21,41 +21,55 @@ steps:
     path: $(MAVEN_CACHE)
   displayName: 'Cache Maven local repo'
 
-# # Download Maven to temp directory
-# - script: |
-#     curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
-#   displayName: 'Download Maven'
+# Download Maven to temp directory
+- script: |
+    curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
+  displayName: 'Download Maven'
 
-# # Extract Maven to temp directory
-# - script: |
-#     mkdir -p $(MAVEN_DIR)
-#     tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
-#   displayName: 'Extract Maven'
+# Extract Maven to temp directory
+- script: |
+    mkdir -p $(MAVEN_DIR)
+    tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
+  displayName: 'Extract Maven'
 
-# # Run Maven build using correct path
-# - script: |
-#     export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
-#     export PATH=$MAVEN_HOME/bin:$PATH
-#     cd $(SOURCE_DIR)
-#     mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
-#   displayName: 'Run Maven Build'
+# Run Maven build using correct path
+- script: |
+    export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
+    export PATH=$MAVEN_HOME/bin:$PATH
+    cd $(SOURCE_DIR)
+    mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
+  displayName: 'Run Maven Build'
 
-# - publish: $(SOURCE_DIR)/target
-#   artifact: petclinic-jar-$(Build.BuildId)
-#   displayName: 'Publish JAR Artifact with Unique Name'
+- publish: $(SOURCE_DIR)/target
+  artifact: petclinic-jar-$(Build.BuildId)
+  displayName: 'Publish JAR Artifact with Unique Name'
 
-# - publish: $(SOURCE_DIR)/target
-#   artifact: petclinic-jar
-#   displayName: 'Publish JAR Artifact'
-#Docker version
+- publish: $(SOURCE_DIR)/target
+  artifact: petclinic-jar
+  displayName: 'Publish JAR Artifact'
+
+# Docker version
 - script: docker --version
   displayName: 'Check Docker Installation'
 
+# Docker login (recommended approach using task)
+- task: Docker@2
+  displayName: 'Login to Docker Hub'
+  inputs:
+    command: login
+    containerRegistry: dockerHubRegistry # You'll need to create a Docker Hub service connection
+    # OR use the following if you prefer script approach:
+    # command: login
+    # username: $(DOCKER_USERNAME)
+    # password: $(DOCKER_PASSWORD)
 
-# Docker login
-- script: |
-    echo -n "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-  displayName: 'Docker Login'
+# Alternative script approach (if you prefer)
+# - script: |
+#     docker login -u $(DOCKER_USERNAME) -p $(DOCKER_PASSWORD)
+#   displayName: 'Docker Login'
+#   env:
+#     DOCKER_USERNAME: $(DOCKER_USERNAME)
+#     DOCKER_PASSWORD: $(DOCKER_PASSWORD)
 
 # Build Docker image
 - script: |
