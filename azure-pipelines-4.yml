@@ -21,32 +21,36 @@ steps:
     path: $(MAVEN_CACHE)
   displayName: 'Cache Maven local repo'
 
-# Download Maven to temp directory
-- script: |
-    curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
-  displayName: 'Download Maven'
+# # Download Maven to temp directory
+# - script: |
+#     curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
+#   displayName: 'Download Maven'
 
-# Extract Maven to temp directory
-- script: |
-    mkdir -p $(MAVEN_DIR)
-    tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
-  displayName: 'Extract Maven'
+# # Extract Maven to temp directory
+# - script: |
+#     mkdir -p $(MAVEN_DIR)
+#     tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
+#   displayName: 'Extract Maven'
 
-# Run Maven build using correct path
-- script: |
-    export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
-    export PATH=$MAVEN_HOME/bin:$PATH
-    cd $(SOURCE_DIR)
-    mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
-  displayName: 'Run Maven Build'
+# # Run Maven build using correct path
+# - script: |
+#     export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
+#     export PATH=$MAVEN_HOME/bin:$PATH
+#     cd $(SOURCE_DIR)
+#     mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
+#   displayName: 'Run Maven Build'
 
-- publish: $(SOURCE_DIR)/target
-  artifact: petclinic-jar-$(Build.BuildId)
-  displayName: 'Publish JAR Artifact with Unique Name'
+# - publish: $(SOURCE_DIR)/target
+#   artifact: petclinic-jar-$(Build.BuildId)
+#   displayName: 'Publish JAR Artifact with Unique Name'
 
-- publish: $(SOURCE_DIR)/target
-  artifact: petclinic-jar
-  displayName: 'Publish JAR Artifact'
+# - publish: $(SOURCE_DIR)/target
+#   artifact: petclinic-jar
+#   displayName: 'Publish JAR Artifact'
+#Docker version
+- script: docker --version
+  displayName: 'Check Docker Installation'
+
 
 # Docker login
 - script: |
