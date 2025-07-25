@@ -25,7 +25,7 @@ stages:
 
         - task: Maven@4
           inputs:
-            mavenPomFile: 'pom.xml'
+            mavenPomFile: 'Helm/Pet_clinic_project/spring-petclinic'
             publishJUnitResults: true
             testResultsFiles: '**/surefire-reports/TEST-*.xml'
             codeCoverageToolOption: 'JaCoCo'
