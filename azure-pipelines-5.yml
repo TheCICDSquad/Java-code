@@ -1,72 +1,70 @@
-trigger:
-- main
+trigger: none  # No CI build on push
+
+pr:
+  branches:
+    include:
+      - main
 
 pool:
-  name: Linux_Agent
+  vmImage: ubuntu-latest
 
 variables:
-  MAVEN_DIR: $(Agent.TempDirectory)/maven
-  MAVEN_CACHE: $(Pipeline.Workspace)/.m2
-  SOURCE_DIR: $(Build.SourcesDirectory)/Helm/Pet_clinic_project/spring-petclinic
-  IMAGE_NAME: sashangykumar456/petclinic  # Must match your Docker Hub repository exactly
-  IMAGE_TAG: $(Build.BuildId)
-  DOCKER_REGISTRY: docker.io  # Explicit registry URL
+  rg: 'devops-rg'
 
-steps:
-- checkout: self
+stages:
 
-# Cache Maven local repo
-- task: Cache@2
-  inputs:
-    key: 'maven | "$(Agent.OS)" | $(SOURCE_DIR)/pom.xml'
-    path: $(MAVEN_CACHE)
-  displayName: 'Cache Maven local repo'
+# =====================
+# Validate PR Stage
+# =====================
+- stage: ValidatePR
+  displayName: 'Validate Pull Request'
+  jobs:
+    - job: BuildAndValidate
+      displayName: 'Build and Test'
+      steps:
 
-# Download Maven
-- script: |
-    curl -L https://archive.apache.org/dist/maven/maven-3/3.9.4/binaries/apache-maven-3.9.4-bin.tar.gz -o $(Agent.TempDirectory)/maven.tar.gz
-  displayName: 'Download Maven'
+        - task: Maven@4
+          inputs:
+            mavenPomFile: 'pom.xml'
+            publishJUnitResults: true
+            testResultsFiles: '**/surefire-reports/TEST-*.xml'
+            codeCoverageToolOption: 'JaCoCo'
+            javaHomeOption: 'JDKVersion'
+            mavenVersionOption: 'Default'
+            mavenAuthenticateFeed: false
+            effectivePomSkip: false
+            sonarQubeRunAnalysis: false
 
-# Extract Maven
-- script: |
-    mkdir -p $(MAVEN_DIR)
-    tar -xzf $(Agent.TempDirectory)/maven.tar.gz -C $(MAVEN_DIR)
-  displayName: 'Extract Maven'
+        - task: Bash@3
+          name: NotifyFailure
+          displayName: 'Notify if Validation Fails'
+          condition: failed()
+          inputs:
+            targetType: 'inline'
+            script: |
+              echo "❌ PR validation failed. Fix the issues before merging."
 
-# Maven build
-- script: |
-    export MAVEN_HOME=$(MAVEN_DIR)/apache-maven-3.9.4
-    export PATH=$MAVEN_HOME/bin:$PATH
-    cd $(SOURCE_DIR)
-    mvn clean install -B -Dmaven.repo.local=$(MAVEN_CACHE)
-  displayName: 'Run Maven Build'
+        - task: Bash@3
+          name: AutoMerge
+          displayName: 'Auto Complete Pull Request if Successful'
+          condition: succeeded()
+          env:
+            SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+          inputs:
+            targetType: 'inline'
+            script: |
+              echo "✅ PR validation succeeded. Attempting to auto-complete the PR."
 
-# Verify Dockerfile exists
-- script: |
-    if [ ! -f "$(SOURCE_DIR)/Dockerfile" ]; then
-      echo "##vso[task.logissue type=error]Dockerfile not found at $(SOURCE_DIR)/Dockerfile"
-      exit 1
-    fi
-  displayName: 'Verify Dockerfile Exists'
+              PR_ID=$(System.PullRequest.PullRequestId)
+              ORG_URL=$(System.CollectionUri)
+              PROJECT=$(System.TeamProject)
+              REPO_ID=$(Build.Repository.ID)
 
-# Docker login (using script with variables)
-- script: |
-    docker logout $(DOCKER_REGISTRY)
-    echo "$(DOCKER_PASSWORD)" | docker login $(DOCKER_REGISTRY) -u "$(DOCKER_USERNAME)" --password-stdin
-    docker info | grep Username
-  displayName: 'Docker Login'
-  env:
-    DOCKER_USERNAME: $(DOCKER_USERNAME)
-    DOCKER_PASSWORD: $(DOCKER_PASSWORD)
+              echo "Merging PR $PR_ID in repo $REPO_ID..."
 
-# Build Docker image
-- script: |
-    cd $(SOURCE_DIR)
-    docker build -t $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) .
-  displayName: 'Build Docker Image'
+              curl -X PATCH \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Bearer $SYSTEM_ACCESSTOKEN" \
+                -d '{ "autoCompleteSetBy": { "id": "$(Build.RequestedForId)" } }' \
+                "${ORG_URL}${PROJECT}/_apis/git/repositories/${REPO_ID}/pullRequests/${PR_ID}?api-version=7.1-preview.1"
 
-# Push Docker image with retry
-- script: |
-    docker push $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) || \
-    (sleep 5 && docker push $(DOCKER_REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG))
-  displayName: 'Push Docker Image'
