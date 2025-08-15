@@ -12,7 +12,7 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: Linux-selfhosted
     strategy:
       matrix:
         java: [ '17' ]
